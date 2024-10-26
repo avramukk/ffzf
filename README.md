@@ -2,7 +2,7 @@
 
 # ffzf: ffmpeg + fzf
 
-![[Image-26-10-2024.gif]]
+![image](Image-26-10-2024.gif)
 
 Simple CLI tool for fast run test streams with ffmpeg+fzf
 # Problem
@@ -40,7 +40,6 @@ ffzf
 ```
 
 lavfi input used for video `"testsrc=size={resolution}:rate={fps}" `and for audio `-f lavfi -i "sine=frequency=220:beep_factor=4"` just to be able to listen signal.
-![[Image-26-10-2024-1.gif]]
 If you need something specific, feel free to fork repo update update scripts. Its pretty simple.
 
 Hope it will be helpful for somebody.
