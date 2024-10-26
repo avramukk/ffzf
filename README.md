@@ -1,5 +1,3 @@
-#ffmpeg #go #fzf
-
 # ffzf: ffmpeg + fzf
 
 ![image](Image-26-10-2024.gif)
