@@ -101,7 +101,7 @@ func main() {
 	var ffmpegCmd string
 	if inputType == "lavfi" {
 		// Lavfi input with testsrc2 and sine audio
-		ffmpegCmd = fmt.Sprintf(`ffmpeg -re -stream_loop -1 -f lavfi -i "testsrc=size=%s:rate=%s" `+
+		ffmpegCmd = fmt.Sprintf(`ffmpeg -hide_banner -re -stream_loop -1 -f lavfi -i "testsrc=size=%s:rate=%s" `+
 			`-f lavfi -i "sine=frequency=220:beep_factor=4" `+
 			`-b:v "%s" -profile:v high -pix_fmt yuv420p `+
 			`-vf "drawtext=fontsize=150:fontcolor=red:x=(w-tw)/4:y=(h-th)/2:text='%%{pts\\:hms} %%{n}':timecode_rate=%s" `+
@@ -109,7 +109,7 @@ func main() {
 			`-f mpegts "%s"`, resolution, fps, bitrate, fps, url)
 	} else {
 		// Regular file input
-		ffmpegCmd = fmt.Sprintf(`ffmpeg -re -stream_loop -1 -i "%s" -s "%s" -r "%s" -b:v "%s" `+
+		ffmpegCmd = fmt.Sprintf(`ffmpeg -hide_banner -re -stream_loop -1 -i "%s" -s "%s" -r "%s" -b:v "%s" `+
 			`-c:v libx264 -c:a aac -f mpegts "%s"`, input, resolution, fps, bitrate, url)
 	}
 
