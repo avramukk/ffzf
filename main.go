@@ -86,6 +86,36 @@ func getURL() string {
 	return ""
 }
 
+func hasFFmpegFilter(name string) bool {
+	cmd := exec.Command("ffmpeg", "-hide_banner", "-filters")
+	output, err := cmd.Output()
+	if err != nil {
+		return false
+	}
+	return strings.Contains(string(output), " "+name+" ")
+}
+
+func hasFFmpegOutputProtocol(name string) bool {
+	cmd := exec.Command("ffmpeg", "-hide_banner", "-protocols")
+	output, err := cmd.Output()
+	if err != nil {
+		return false
+	}
+
+	inOutputSection := false
+	for _, line := range strings.Split(string(output), "\n") {
+		line = strings.TrimSpace(line)
+		if line == "Output:" {
+			inOutputSection = true
+			continue
+		}
+		if inOutputSection && line == name {
+			return true
+		}
+	}
+	return false
+}
+
 // Main function to drive the script execution
 func main() {
 	// Get input file or lavfi source
@@ -96,17 +126,28 @@ func main() {
 	fps := getFPS()
 	bitrate := getBitrate()
 	url := getURL()
+	protocol := strings.SplitN(url, ":", 2)[0]
+	if !hasFFmpegOutputProtocol(protocol) {
+		die(fmt.Sprintf("ffmpeg does not support output protocol %q. Install an ffmpeg build with %s support or choose another output URL.", protocol, protocol))
+	}
 
 	// Construct the ffmpeg command based on input type
 	var ffmpegCmd string
 	if inputType == "lavfi" {
-		// Lavfi input with testsrc2 and sine audio
+		videoFilter := ""
+		if hasFFmpegFilter("drawtext") {
+			videoFilter = fmt.Sprintf(`-vf "drawtext=fontsize=150:fontcolor=red:x=(w-tw)/4:y=(h-th)/2:text='%%{pts\\:hms} %%{n}':timecode_rate=%s" `, fps)
+		} else {
+			fmt.Fprintln(os.Stderr, "Warning: ffmpeg drawtext filter is not available; starting lavfi stream without timestamp overlay.")
+		}
+
+		// Lavfi input with testsrc video and sine audio
 		ffmpegCmd = fmt.Sprintf(`ffmpeg -hide_banner -re -stream_loop -1 -f lavfi -i "testsrc=size=%s:rate=%s" `+
 			`-f lavfi -i "sine=frequency=220:beep_factor=4" `+
 			`-b:v "%s" -profile:v high -pix_fmt yuv420p `+
-			`-vf "drawtext=fontsize=150:fontcolor=red:x=(w-tw)/4:y=(h-th)/2:text='%%{pts\\:hms} %%{n}':timecode_rate=%s" `+
+			`%s`+
 			`-c:v libx264 -c:a aac `+
-			`-f mpegts "%s"`, resolution, fps, bitrate, fps, url)
+			`-f mpegts "%s"`, resolution, fps, bitrate, videoFilter, url)
 	} else {
 		// Regular file input
 		ffmpegCmd = fmt.Sprintf(`ffmpeg -hide_banner -re -stream_loop -1 -i "%s" -s "%s" -r "%s" -b:v "%s" `+

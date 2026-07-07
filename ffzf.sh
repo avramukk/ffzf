@@ -60,6 +60,17 @@ get_url() {
   fi
 }
 
+has_ffmpeg_filter() {
+  [[ "$(ffmpeg -hide_banner -filters 2>/dev/null)" == *" $1 "* ]]
+}
+
+has_ffmpeg_output_protocol() {
+  local protocol output_protocols
+  protocol="$1"
+  output_protocols=$(ffmpeg -hide_banner -protocols 2>/dev/null)
+  [[ "$output_protocols" == *$'Output:'*$'\n  '"$protocol"$'\n'* ]]
+}
+
 # Main function to drive the script execution
 main() {
   # Get input file or lavfi source
@@ -78,14 +89,26 @@ main() {
 
   local url
   url=$(get_url)
+  local protocol
+  protocol="${url%%:*}"
+  if ! has_ffmpeg_output_protocol "$protocol"; then
+    die "ffmpeg does not support output protocol '$protocol'. Install an ffmpeg build with $protocol support or choose another output URL."
+  fi
 
   # Construct the ffmpeg command based on input type
   if [ "$input_type" == "lavfi" ]; then
-    # Lavfi input with testsrc2 and sine audio
+    video_filter=""
+    if has_ffmpeg_filter "drawtext"; then
+      video_filter="-vf \"drawtext=fontsize=150:fontcolor=red:x=(w-tw)/4:y=(h-th)/2:text='%{pts\\:hms} %{n}':timecode_rate=${fps}\""
+    else
+      echo "Warning: ffmpeg drawtext filter is not available; starting lavfi stream without timestamp overlay." >&2
+    fi
+
+    # Lavfi input with testsrc video and sine audio
     ffmpeg_cmd="ffmpeg -re -stream_loop -1 -f lavfi -i \"testsrc=size=${resolution}:rate=${fps}\" \
       -f lavfi -i \"sine=frequency=220:beep_factor=4\" \
       -b:v \"$bitrate\" -profile:v high -pix_fmt yuv420p \
-      -vf \"drawtext=fontsize=150:fontcolor=red:x=(w-tw)/4:y=(h-th)/2:text='%{pts\\:hms} %{n}':timecode_rate=${fps}\" \
+      $video_filter \
       -c:v libx264 -c:a aac \
       -f mpegts \"$url\""
   else
